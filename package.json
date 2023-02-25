@@ -29,11 +29,11 @@
   ],
   "n8n": {
     "n8nNodesApiVersion": 1,
-    "credentials": [
-    ],
+    "credentials": [],
     "nodes": [
       "dist/nodes/RvsMySql/RvsMySql.node.js",
-      "dist/nodes/RvsHttpRequest/RvsHttpRequest.node.js"
+      "dist/nodes/RvsHttpRequest/RvsHttpRequest.node.js",
+      "dist/nodes/RvsSpreadsheetFile/RvsSpreadsheetFile.node.js"
     ]
   },
   "devDependencies": {
@@ -48,6 +48,7 @@
     "typescript": "~4.8.4"
   },
   "dependencies": {
-    "mysql2": "~2.3.0"
+    "mysql2": "~2.3.0",
+    "xlsx": "^0.18.5"
   }
 }
