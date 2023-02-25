@@ -99,6 +99,21 @@ export class RvsSpreadsheetFile implements INodeType {
 				description:
 					'Name of the binary property from which to read the binary data of the spreadsheet file',
 			},
+			{
+				displayName: 'Output Property',
+				name: 'outputPropertyName',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: {
+						operation: ['readSheetNames'],
+					},
+				},
+				placeholder: 'data',
+				description:
+					'Name of the binary property from which to read the binary data of the spreadsheet file',
+			},
 
 			// ----------------------------------
 			//         fromFile
@@ -522,17 +537,15 @@ export class RvsSpreadsheetFile implements INodeType {
 				try {
 					const item = items[i];
 
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 					const options = this.getNodeParameter('options', i, {});
 
-					// @ts-ignore
 					if (item.binary === undefined || item.binary[binaryPropertyName] === undefined) {
 						// Property did not get found on item
 						continue;
 					}
 
 					// Read the binary spreadsheet data
-					// @ts-ignore
 					const binaryData = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 					let workbook = xlsxRead(binaryData, {raw: options.rawData as boolean});
 
@@ -542,17 +555,13 @@ export class RvsSpreadsheetFile implements INodeType {
 						});
 					}
 
-					// workbook.SheetNames.forEach(s => 					newItems.push({
-					// 	json: s as unknown,
-					// } as INodeExecutionData));
-					newItems.push({
+					const outputName = this.getNodeParameter('outputPropertyName', i) as string;
+
+					workbook.SheetNames.forEach(s => newItems.push({
 						json: {
-							sheetNames: workbook.SheetNames
+							[outputName]: s as unknown
 						},
-						pairedItem: {
-							item: i,
-						},
-					} as INodeExecutionData);
+					} as INodeExecutionData));
 				} catch (error) {
 					throw error;
 				}
