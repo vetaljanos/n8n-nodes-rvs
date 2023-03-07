@@ -119,6 +119,14 @@ export class RvsMySql implements INodeType {
 						description:
 							'Whether support big numbers for connection',
 					},
+					{
+						displayName: 'SELECT Mode',
+						name: 'selectMode',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether select or update mode. It affects on output data.',
+					},
 				],
 			},
 			// ----------------------------------
@@ -504,6 +512,7 @@ export class RvsMySql implements INodeType {
 			try {
 				const query = this.getNodeParameter('query', 0, '', {extractValue: true}) as string;
 				const columnString = this.getNodeParameter('columns', 0) as string;
+				const selectMode = this.getNodeParameter('options', 0).selectMode as boolean || true;
 				const columns = columnString.split(',').map((column) => column.trim());
 
 				const queryResults = (await Promise.all(items.filter(item => Object.keys(item.json).length > 0).map(item => {
@@ -516,6 +525,10 @@ export class RvsMySql implements INodeType {
 					});
 
 					return connection.execute(query, requestItem).then(([result]) => {
+						if (selectMode) {
+							return result instanceof Array ? result[0] : result;
+						}
+
 						return {
 							...item.json,
 							result
