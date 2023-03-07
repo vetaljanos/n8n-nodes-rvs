@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-rvs",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Extend n8n core nodes",
   "keywords": [
     "n8n-community-node-package"
@@ -44,6 +44,7 @@
     "gulp": "^4.0.2",
     "n8n-core": "*",
     "n8n-workflow": "*",
+    "n8n-nodes-base": "*",
     "prettier": "^2.7.1",
     "typescript": "~4.8.4"
   },
