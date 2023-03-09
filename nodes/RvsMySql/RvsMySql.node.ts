@@ -522,7 +522,9 @@ export class RvsMySql implements INodeType {
 				if (bulk) {
 					let bulkData = nonEmptyItems
 						.map(item => columns.map(column => {
-							if (item.json[column] === undefined) {
+							if (column.startsWith('$')) {
+								return column.substring(1);
+							} else if (item.json[column] === undefined) {
 								return null;
 							} else {
 								return item.json[column];
@@ -534,7 +536,7 @@ export class RvsMySql implements INodeType {
 							return collection;
 						}, []);
 
-					dbRequests = [connection.query(query, bulkData).then(([result]) => {
+					dbRequests = [connection.query(query, [bulkData]).then(([result]) => {
 						return this.helpers.returnJsonArray(result as unknown as IDataObject[]);
 					})];
 				} else {
