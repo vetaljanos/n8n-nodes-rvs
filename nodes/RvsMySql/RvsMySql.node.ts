@@ -119,6 +119,14 @@ export class RvsMySql implements INodeType {
 						description:
 							'Whether support big numbers for connection',
 					},
+					{
+						displayName: 'Bulk',
+						name: 'bulk',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether bulk or non-bulk insert/update',
+					},
 				],
 			},
 			// ----------------------------------
@@ -386,7 +394,8 @@ export class RvsMySql implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('mySql');
-		const supportBigNumbers = !!this.getNodeParameter('options', 0)?.supportBigNumbers;
+		let options = this.getNodeParameter('options', 0);
+		const supportBigNumbers = !!options?.supportBigNumbers;
 		const connection = await createConnection({...credentials, supportBigNumbers, bigNumberStrings: supportBigNumbers});
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0);
@@ -438,7 +447,6 @@ export class RvsMySql implements INodeType {
 				const columns = columnString.split(',').map((column) => column.trim());
 				const insertItems = copyInputItems(items, columns);
 				const insertPlaceholder = `(${columns.map((_column) => '?').join(',')})`;
-				const options = this.getNodeParameter('options', 0);
 				const insertIgnore = options.ignore as boolean;
 				const insertPriority = options.priority as string;
 
@@ -505,24 +513,50 @@ export class RvsMySql implements INodeType {
 				const query = this.getNodeParameter('query', 0, '', {extractValue: true}) as string;
 				const columnString = this.getNodeParameter('columns', 0) as string;
 				const columns = columnString.split(',').map((column) => column.trim());
+				const bulk = !!options.bulk;
 
-				const queryResults = (await Promise.all(items.filter(item => Object.keys(item.json).length > 0).map((item, index) => {
-					const requestItem = columns.map(column => {
-						if (item.json[column] === undefined) {
-							return null;
-						} else {
-							return item.json[column];
-						}
-					});
+				let nonEmptyItems = items.filter(item => Object.keys(item.json).length > 0);
 
-					return connection.execute(query, requestItem).then(([result]) => {
-						return this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(result as unknown as IDataObject[]),
-							{ itemData: { item: index } },
-						);
+				let dbRequests;
+
+				if (bulk) {
+					let bulkData = nonEmptyItems
+						.map(item => columns.map(column => {
+							if (item.json[column] === undefined) {
+								return null;
+							} else {
+								return item.json[column];
+							}
+						}))
+						.reduce((collection, item) => {
+							collection.push(item);
+
+							return collection;
+						}, []);
+
+					dbRequests = [connection.query(query, bulkData).then(([result]) => {
+						return this.helpers.returnJsonArray(result as unknown as IDataObject[]);
+					})];
+				} else {
+					dbRequests = nonEmptyItems.map((item, index) => {
+						const requestItem = columns.map(column => {
+							if (item.json[column] === undefined) {
+								return null;
+							} else {
+								return item.json[column];
+							}
+						});
+
+						return connection.execute(query, requestItem).then(([result]) => {
+							return this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(result as unknown as IDataObject[]),
+								{itemData: {item: index}},
+							);
+						});
 					});
-				})
-				)) as unknown as IDataObject[][];
+				}
+
+				const queryResults = (await Promise.all(dbRequests)) as unknown as IDataObject[][];
 
 				const concatenatedData = queryResults.reduce((collection, elements) => (collection.concat(elements)), []);
 
