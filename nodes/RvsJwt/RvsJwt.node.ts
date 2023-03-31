@@ -26,13 +26,13 @@ export class RvsJwt implements INodeType {
 						name: 'Generate JWT',
 						value: 'generateJwt',
 						description: 'Generate JWT Token',
-						action: 'Generate JWT Token',
+						action: 'Generate jwt token',
 					},
 					{
 						name: 'Verify JWT',
 						value: 'verifyJwt',
 						description: 'Verify Jwt Token',
-						action: 'Verify Jwt Token',
+						action: 'Verify jwt token',
 					},
 				],
 				default: 'verifyJwt',
@@ -48,7 +48,7 @@ export class RvsJwt implements INodeType {
 				default: '',
 				placeholder: 'Object or string',
 				required: true,
-				description: 'Json data object',
+				description: 'JSON data object',
 				displayOptions: {
 					show: {
 						operation: ['generateJwt', 'verifyJwt'],
@@ -97,12 +97,12 @@ export class RvsJwt implements INodeType {
 				description: 'Modifiers',
 				options: [
 					{
-						displayName: 'Raise exception',
+						displayName: 'Raise Exception',
 						name: 'raiseException',
 						type: 'boolean',
 						default: false,
 						description:
-							'Raise exception if error or return object',
+							'Whether raise exception if error or return object',
 					},
 				],
 			}
