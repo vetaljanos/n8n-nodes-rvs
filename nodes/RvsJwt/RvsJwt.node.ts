@@ -1,6 +1,6 @@
 import {INodeExecutionData, INodeType, INodeTypeDescription} from "n8n-workflow";
 import {IExecuteFunctions} from "n8n-core";
-import {verify, sign} from 'jsonwebtoken';
+import {sign, verify} from 'jsonwebtoken';
 
 export class RvsJwt implements INodeType {
 	description: INodeTypeDescription = {
@@ -104,9 +104,17 @@ export class RvsJwt implements INodeType {
 						description:
 							'Whether raise exception if error or return object',
 					},
+					{
+						displayName: 'Extend input object',
+						name: 'extendInputObject',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether extend input object',
+					},
 				],
 			}
-			],
+		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -115,7 +123,7 @@ export class RvsJwt implements INodeType {
 		const targetObjectName = this.getNodeParameter('targetObjectName', 0, 'result') as string;
 		const payloadRaw = this.getNodeParameter('payload', 0);
 
-		let result: string|object;
+		let result: string | object;
 
 		if (operation === 'generateJwt') {
 
@@ -123,7 +131,7 @@ export class RvsJwt implements INodeType {
 				throw 'Payload must be defined in type string or object';
 			}
 
-			let payload: string|object;
+			let payload: string | object;
 
 			if (typeof payloadRaw === 'object' || typeof payloadRaw === 'string') {
 				payload = payloadRaw;
@@ -133,13 +141,30 @@ export class RvsJwt implements INodeType {
 
 			result = sign(payload, privateKey);
 		} else if (operation === 'verifyJwt') {
+			const options = this.getNodeParameter('options', 0);
+
 			try {
-				result = Object.assign(verify(payloadRaw as string, privateKey, {
+				const verifyResult = Object.assign(verify(payloadRaw as string, privateKey, {
 					complete: true
 				}), {error: false});
 
+				if (options.extendInputObject === undefined || options.extendInputObject === true) {
+					const items = this.getInputData();
+
+					const newItems = items.map(item => {
+						const newItem = {...item};
+
+						newItem.json = {...newItem.json, [targetObjectName]: verifyResult};
+
+						return newItem;
+					});
+
+					return this.prepareOutputData(newItems);
+				}
+
+				result = verifyResult;
+
 			} catch (e) {
-				const options = this.getNodeParameter('options', 0);
 
 				if (options.raiseException) {
 					throw e;
@@ -153,8 +178,6 @@ export class RvsJwt implements INodeType {
 			throw 'Unsupported operation';
 		}
 
-		let s = sign('123', '12345678');
-		console.log(s);
 		return this.prepareOutputData([{json: {[targetObjectName]: result}}]);
 	}
 }
