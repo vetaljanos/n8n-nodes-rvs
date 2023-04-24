@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-rvs",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Extend n8n core nodes",
   "keywords": [
     "n8n-community-node-package"
@@ -48,11 +48,13 @@
     "n8n-workflow": "*",
     "n8n-nodes-base": "*",
     "prettier": "^2.7.1",
-    "typescript": "~4.8.4"
+    "typescript": "~4.8.4",
+    "@types/lodash.set": "^4"
   },
   "dependencies": {
     "jsonwebtoken": "~9.0.0",
     "mysql2": "~2.3.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "lodash.set": "^4"
   }
 }

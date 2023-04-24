@@ -9,7 +9,7 @@ import type {
 import {IDataObject, NodeOperationError} from "n8n-workflow";
 import type mysql2 from 'mysql2/promise';
 
-import {createConnection, copyInputItems, searchTables} from 'n8n-nodes-base/dist/nodes/MySql/GenericFunctions';
+import {createConnection, copyInputItems, searchTables} from './GenericFunctions';
 import type {IExecuteFunctions} from 'n8n-core';
 
 export class RvsMySql implements INodeType {
