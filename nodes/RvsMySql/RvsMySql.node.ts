@@ -4,13 +4,18 @@ import type {
 	ICredentialTestFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
-	INodeType, INodeTypeDescription,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
-import {IDataObject, NodeOperationError} from "n8n-workflow";
-import type mysql2 from 'mysql2/promise';
-
+import { IDataObject, NodeOperationError } from 'n8n-workflow';
 import {createConnection, copyInputItems, searchTables} from './GenericFunctions';
-import type {IExecuteFunctions} from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
+import { OPERATIONS, FIELD_NAMES, FIELD_TYPES, FIELD_MODE_TYPES, PRIORITY } from './lib/constants';
+import {
+	RecordReturningNodeParameter,
+	ReturnItems,
+	StringReturningNodeParameter,
+} from './interfaces/ReturnParams';
 
 export class RvsMySql implements INodeType {
 	description: INodeTypeDescription = {
@@ -35,34 +40,34 @@ export class RvsMySql implements INodeType {
 		properties: [
 			{
 				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
+				name: FIELD_NAMES.operation,
+				type: FIELD_TYPES.options,
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Execute Query',
-						value: 'executeQuery',
+						name: OPERATIONS.executeQuery.name,
+						value: OPERATIONS.executeQuery.value,
 						description: 'Execute an SQL query',
 						action: 'Execute a SQL query',
 					},
 					{
-						name: 'Insert',
-						value: 'insert',
+						name: OPERATIONS.insert.name,
+						value: OPERATIONS.insert.value,
 						description: 'Insert rows in database',
 						action: 'Insert rows in database',
 					},
 					{
-						name: 'Update',
-						value: 'update',
+						name: OPERATIONS.update.name,
+						value: OPERATIONS.update.value,
 						description: 'Update rows in database',
 						action: 'Update rows in database',
 					},
 					{
-						name: 'Prepared Statement',
-						value: 'preparedStatement',
+						name: OPERATIONS.preparedStatement.name,
+						value: OPERATIONS.preparedStatement.value,
 						description: 'Prepared Statement Execution',
-						action: 'Prepared statement'
-					}
+						action: 'Prepared statement',
+					},
 				],
 				default: 'insert',
 			},
@@ -72,39 +77,38 @@ export class RvsMySql implements INodeType {
 			// ----------------------------------
 			{
 				displayName: 'Query',
-				name: 'query',
-				type: 'string',
+				name: FIELD_NAMES.query,
+				type: FIELD_TYPES.string,
 				displayOptions: {
 					show: {
-						operation: ['preparedStatement'],
+						operation: [OPERATIONS.preparedStatement.value],
 					},
 				},
 				default: '',
-				placeholder: '',
+				placeholder: 'SELECT * FROM my_table where ID=?',
 				required: true,
 				description: 'The SQL query to execute',
 			},
 			{
 				displayName: 'Columns',
-				name: 'columns',
-				type: 'string',
+				name: FIELD_NAMES.columns,
+				type: FIELD_TYPES.string,
 				displayOptions: {
 					show: {
-						operation: ['preparedStatement'],
+						operation: [OPERATIONS.preparedStatement.value],
 					},
 				},
 				default: '',
 				placeholder: 'id,name,description',
-				description:
-					'Comma-separated list of the properties which should used as params for query',
+				description: 'Comma-separated list of the properties which should used as params for query',
 			},
 			{
 				displayName: 'Options',
-				name: 'options',
-				type: 'collection',
+				name: FIELD_NAMES.options,
+				type: FIELD_TYPES.collection,
 				displayOptions: {
 					show: {
-						operation: ['preparedStatement'],
+						operation: [OPERATIONS.preparedStatement.value],
 					},
 				},
 				default: {},
@@ -112,20 +116,11 @@ export class RvsMySql implements INodeType {
 				description: 'Modifiers',
 				options: [
 					{
-						displayName: 'Support Big Numbers',
-						name: 'supportBigNumbers',
-						type: 'boolean',
-						default: false,
-						description:
-							'Whether support big numbers for connection',
-					},
-					{
 						displayName: 'Bulk',
-						name: 'bulk',
-						type: 'boolean',
+						name: FIELD_NAMES.bulk,
+						type: FIELD_TYPES.boolean,
 						default: false,
-						description:
-							'Whether bulk or non-bulk insert/update',
+						description: 'Whether bulk or non-bulk insert/update',
 					},
 				],
 			},
@@ -134,11 +129,11 @@ export class RvsMySql implements INodeType {
 			// ----------------------------------
 			{
 				displayName: 'Query',
-				name: 'query',
-				type: 'string',
+				name: FIELD_NAMES.query,
+				type: FIELD_TYPES.string,
 				displayOptions: {
 					show: {
-						operation: ['executeQuery'],
+						operation: [OPERATIONS.executeQuery.value],
 					},
 				},
 				default: '',
@@ -148,11 +143,11 @@ export class RvsMySql implements INodeType {
 			},
 			{
 				displayName: 'Options',
-				name: 'options',
+				name: FIELD_NAMES.options,
 				type: 'collection',
 				displayOptions: {
 					show: {
-						operation: ['executeQuery'],
+						operation: [OPERATIONS.executeQuery.value],
 					},
 				},
 				default: {},
@@ -161,11 +156,10 @@ export class RvsMySql implements INodeType {
 				options: [
 					{
 						displayName: 'Support Big Numbers',
-						name: 'supportBigNumbers',
-						type: 'boolean',
+						name: FIELD_NAMES.supportBigNumbers,
+						type: FIELD_TYPES.boolean,
 						default: false,
-						description:
-							'Whether support big numbers for connection',
+						description: 'Whether support big numbers for connection',
 					},
 				],
 			},
@@ -175,15 +169,15 @@ export class RvsMySql implements INodeType {
 			// ----------------------------------
 			{
 				displayName: 'Table',
-				name: 'table',
-				type: 'resourceLocator',
-				default: {mode: 'list', value: ''},
+				name: FIELD_NAMES.table,
+				type: FIELD_TYPES.resourceLocator,
+				default: { mode: FIELD_MODE_TYPES.list, value: '' },
 				required: true,
 				modes: [
 					{
 						displayName: 'From List',
-						name: 'list',
-						type: 'list',
+						name: FIELD_NAMES.list,
+						type: FIELD_MODE_TYPES.list,
 						placeholder: 'Select a Table...',
 						typeOptions: {
 							searchListMethod: 'searchTables',
@@ -193,25 +187,25 @@ export class RvsMySql implements INodeType {
 					},
 					{
 						displayName: 'Name',
-						name: 'name',
-						type: 'string',
+						name: FIELD_NAMES.name,
+						type: FIELD_MODE_TYPES.string,
 						placeholder: 'table_name',
 					},
 				],
 				displayOptions: {
 					show: {
-						operation: ['insert'],
+						operation: [OPERATIONS.insert.value],
 					},
 				},
 				description: 'Name of the table in which to insert data to',
 			},
 			{
 				displayName: 'Columns',
-				name: 'columns',
-				type: 'string',
+				name: FIELD_NAMES.columns,
+				type: FIELD_TYPES.string,
 				displayOptions: {
 					show: {
-						operation: ['insert'],
+						operation: [OPERATIONS.insert.value],
 					},
 				},
 				requiresDataPath: 'multiple',
@@ -222,11 +216,11 @@ export class RvsMySql implements INodeType {
 			},
 			{
 				displayName: 'Options',
-				name: 'options',
-				type: 'collection',
+				name: FIELD_NAMES.options,
+				type: FIELD_TYPES.collection,
 				displayOptions: {
 					show: {
-						operation: ['insert'],
+						operation: [OPERATIONS.insert.value],
 					},
 				},
 				default: {},
@@ -235,41 +229,40 @@ export class RvsMySql implements INodeType {
 				options: [
 					{
 						displayName: 'Ignore',
-						name: 'ignore',
-						type: 'boolean',
+						name: FIELD_NAMES.ignore,
+						type: FIELD_TYPES.boolean,
 						default: true,
 						description:
 							'Whether to ignore any ignorable errors that occur while executing the INSERT statement',
 					},
 					{
 						displayName: 'Priority',
-						name: 'priority',
-						type: 'options',
+						name: FIELD_NAMES.priority,
+						type: FIELD_TYPES.options,
 						options: [
 							{
-								name: 'Low Prioirity',
-								value: 'LOW_PRIORITY',
+								name: 'Low Priority',
+								value: PRIORITY.low,
 								description:
 									'Delays execution of the INSERT until no other clients are reading from the table',
 							},
 							{
 								name: 'High Priority',
-								value: 'HIGH_PRIORITY',
+								value: PRIORITY.high,
 								description:
 									'Overrides the effect of the --low-priority-updates option if the server was started with that option. It also causes concurrent inserts not to be used.',
 							},
 						],
-						default: 'LOW_PRIORITY',
+						default: PRIORITY.low,
 						description:
 							'Ignore any ignorable errors that occur while executing the INSERT statement',
 					},
 					{
 						displayName: 'Support Big Numbers',
-						name: 'supportBigNumbers',
-						type: 'boolean',
+						name: FIELD_NAMES.supportBigNumbers,
+						type: FIELD_TYPES.boolean,
 						default: false,
-						description:
-							'Whether enable support big numbers for connection',
+						description: 'Whether enable support big numbers for connection',
 					},
 				],
 			},
@@ -279,15 +272,15 @@ export class RvsMySql implements INodeType {
 			// ----------------------------------
 			{
 				displayName: 'Table',
-				name: 'table',
-				type: 'resourceLocator',
-				default: {mode: 'list', value: ''},
+				name: FIELD_NAMES.table,
+				type: FIELD_TYPES.resourceLocator,
+				default: { mode: FIELD_MODE_TYPES.list, value: '' },
 				required: true,
 				modes: [
 					{
 						displayName: 'From List',
-						name: 'list',
-						type: 'list',
+						name: FIELD_NAMES.list,
+						type: FIELD_MODE_TYPES.list,
 						placeholder: 'Select a Table...',
 						typeOptions: {
 							searchListMethod: 'searchTables',
@@ -297,25 +290,25 @@ export class RvsMySql implements INodeType {
 					},
 					{
 						displayName: 'Name',
-						name: 'name',
-						type: 'string',
+						name: FIELD_NAMES.name,
+						type: FIELD_MODE_TYPES.string,
 						placeholder: 'table_name',
 					},
 				],
 				displayOptions: {
 					show: {
-						operation: ['update'],
+						operation: [OPERATIONS.update.value],
 					},
 				},
 				description: 'Name of the table in which to update data in',
 			},
 			{
 				displayName: 'Update Key',
-				name: 'updateKey',
-				type: 'string',
+				name: FIELD_NAMES.updateKey,
+				type: FIELD_TYPES.string,
 				displayOptions: {
 					show: {
-						operation: ['update'],
+						operation: [OPERATIONS.update.value],
 					},
 				},
 				default: 'id',
@@ -326,12 +319,12 @@ export class RvsMySql implements INodeType {
 			},
 			{
 				displayName: 'Columns',
-				name: 'columns',
-				type: 'string',
+				name: FIELD_NAMES.columns,
+				type: FIELD_TYPES.string,
 				requiresDataPath: 'multiple',
 				displayOptions: {
 					show: {
-						operation: ['update'],
+						operation: [OPERATIONS.update.value],
 					},
 				},
 				default: '',
@@ -341,11 +334,11 @@ export class RvsMySql implements INodeType {
 			},
 			{
 				displayName: 'Options',
-				name: 'options',
-				type: 'collection',
+				name: FIELD_NAMES.options,
+				type: FIELD_TYPES.collection,
 				displayOptions: {
 					show: {
-						operation: ['update'],
+						operation: [OPERATIONS.update.value],
 					},
 				},
 				default: {},
@@ -354,11 +347,10 @@ export class RvsMySql implements INodeType {
 				options: [
 					{
 						displayName: 'Support Big Numbers',
-						name: 'supportBigNumbers',
-						type: 'boolean',
+						name: FIELD_NAMES.supportBigNumbers,
+						type: FIELD_TYPES.boolean,
 						default: false,
-						description:
-							'Whether support big numbers for connection',
+						description: 'Whether support big numbers for connection',
 					},
 				],
 			},
@@ -394,195 +386,183 @@ export class RvsMySql implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('mySql');
-		let options = this.getNodeParameter('options', 0);
+		let options = this.getNodeParameter(FIELD_NAMES.options as RecordReturningNodeParameter, 0);
 		const supportBigNumbers = !!options?.supportBigNumbers;
-		const connection = await createConnection({...credentials, supportBigNumbers, bigNumberStrings: supportBigNumbers});
+		const connection = await createConnection({
+			...credentials,
+			supportBigNumbers,
+			bigNumberStrings: supportBigNumbers,
+		});
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0);
+		const operation = this.getNodeParameter(FIELD_NAMES.operation, 0);
+
 		let returnItems: INodeExecutionData[] = [];
 
-		if (operation === 'executeQuery') {
-			// ----------------------------------
-			//         executeQuery
-			// ----------------------------------
+		const getQueryString = (index = 0) =>
+			this.getNodeParameter(FIELD_NAMES.query as StringReturningNodeParameter, index);
 
-			try {
-				const queryQueue = items.map(async (item, index) => {
-					const rawQuery = this.getNodeParameter('query', index) as string;
+		const getTable = () =>
+			this.getNodeParameter(FIELD_NAMES.table as StringReturningNodeParameter, 0, '', {
+				extractValue: true,
+			});
 
-					return connection.query(rawQuery);
-				});
+		const getColumnString = () =>
+			this.getNodeParameter(FIELD_NAMES.columns as StringReturningNodeParameter, 0);
 
-				returnItems = ((await Promise.all(queryQueue)) as mysql2.OkPacket[][]).reduce(
-					(collection, result, index) => {
-						const [rows] = result;
+		const getColumns = (columnString: string) =>
+			columnString.split(',').map((column) => column.trim());
 
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(rows as unknown as IDataObject[]),
-							{ itemData: { item: index } },
-						);
+		const getUpdateKey = () =>
+			this.getNodeParameter(FIELD_NAMES.updateKey as StringReturningNodeParameter, 0);
 
-						collection.push(...executionData);
+		const executeQuery = async () => {
+			const queryQueue = items.map(async (item, index) => connection.query(getQueryString(index)));
 
-						return collection;
-					},
-					[] as INodeExecutionData[],
-				);
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({ error: error.message });
-				} else {
-					await connection.end();
-					throw error;
-				}
-			}
-		} else if (operation === 'insert') {
-			// ----------------------------------
-			//         insert
-			// ----------------------------------
+			returnItems = (await Promise.all(queryQueue)).reduce((collection, result, index) => {
+				const [rows] = result;
 
-			try {
-				const table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
-				const columnString = this.getNodeParameter('columns', 0) as string;
-				const columns = columnString.split(',').map((column) => column.trim());
-				const insertItems = copyInputItems(items, columns);
-				const insertPlaceholder = `(${columns.map((_column) => '?').join(',')})`;
-				const insertIgnore = options.ignore as boolean;
-				const insertPriority = options.priority as string;
-
-				const insertSQL = `INSERT ${insertPriority || ''} ${
-					insertIgnore ? 'IGNORE' : ''
-				} INTO ${table}(${columnString}) VALUES ${items
-					.map((_item) => insertPlaceholder)
-					.join(',')};`;
-				const queryItems = insertItems.reduce(
-					(collection: IDataObject[], item) =>
-						collection.concat(Object.values(item) as IDataObject[]),
-					[],
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(rows as ReturnItems),
+					{ itemData: { item: index } },
 				);
 
-				const queryResult = await connection.query(insertSQL, queryItems);
+				collection.push(...executionData);
 
-				returnItems = this.helpers.returnJsonArray(queryResult[0] as unknown as IDataObject);
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({ error: error.message });
-				} else {
-					await connection.end();
-					throw error;
-				}
+				return collection;
+			}, [] as INodeExecutionData[]);
+		};
+		const insert = async () => {
+			const table = getTable();
+			const columnString = getColumnString();
+			const columns = getColumns(columnString);
+			const insertItems = copyInputItems(items, columns);
+			const insertPlaceholder = `(${columns.map((_column) => '?').join(',')})`;
+			const insertIgnore = options.ignore as boolean;
+			const insertPriority = options.priority as string;
+
+			const insertSQL = `INSERT ${insertPriority || ''} ${
+				insertIgnore ? 'IGNORE' : ''
+			} INTO ${table}(${columnString}) VALUES ${items
+				.map((_item) => insertPlaceholder)
+				.join(',')};`;
+			const queryItems = insertItems.reduce(
+				(collection: IDataObject[], item) =>
+					collection.concat(Object.values(item) as IDataObject[]),
+				[],
+			);
+
+			const queryResult = await connection.query(insertSQL, queryItems);
+
+			returnItems = this.helpers.returnJsonArray(queryResult[0] as ReturnItems);
+		};
+		const update = async () => {
+			const table = getTable();
+			const updateKey = getUpdateKey();
+			const columnString = getColumnString();
+			const columns = getColumns(columnString);
+
+			if (!columns.includes(updateKey)) {
+				columns.unshift(updateKey);
 			}
-		} else if (operation === 'update') {
-			// ----------------------------------
-			//         update
-			// ----------------------------------
 
-			try {
-				const table = this.getNodeParameter('table', 0, '', {extractValue: true}) as string;
-				const updateKey = this.getNodeParameter('updateKey', 0) as string;
-				const columnString = this.getNodeParameter('columns', 0) as string;
-				const columns = columnString.split(',').map((column) => column.trim());
-
-				if (!columns.includes(updateKey)) {
-					columns.unshift(updateKey);
-				}
-
-				const updateItems = copyInputItems(items, columns);
-				const updateSQL = `UPDATE ${table}
-													 SET ${columns
-														 .map((column) => `${column} = ?`)
-														 .join(',')}
+			const updateItems = copyInputItems(items, columns);
+			const updateSQL = `UPDATE ${table}
+													 SET ${columns.map((column) => `${column} = ?`).join(',')}
 													 WHERE ${updateKey} = ?;`;
-				const queryQueue = updateItems.map(async (item) =>
-					connection.query(updateSQL, Object.values(item).concat(item[updateKey])),
+
+			const queryQueue = updateItems.map(async (item) =>
+				connection.query(updateSQL, Object.values(item).concat(item[updateKey])),
+			);
+			const queryResult = await Promise.all(queryQueue);
+			returnItems = this.helpers.returnJsonArray(
+				queryResult.map((result) => result[0]) as ReturnItems,
+			);
+		};
+		const preparedStatement = async () => {
+			const query = getQueryString();
+			const columnString = getColumnString();
+			const columns = getColumns(columnString);
+			const bulk = !!options.bulk;
+
+			const nonEmptyItems = items.filter((item) => Object.keys(item.json).length > 0);
+
+			if (nonEmptyItems.length === 0) {
+				await executeQuery();
+				return;
+			}
+
+			const dbRequests = [];
+
+			if (bulk) {
+				const bulkData = nonEmptyItems.flatMap((item) =>
+					columns.map((column) =>
+						column.startsWith('$') ? column.substring(1) : item.json[column] ?? null,
+					),
 				);
-				const queryResult = await Promise.all(queryQueue);
-				returnItems = this.helpers.returnJsonArray(
-					queryResult.map((result) => result[0]) as unknown as IDataObject[],
+
+				dbRequests.push(
+					connection
+						.query(query, [bulkData])
+						.then(([result]) => this.helpers.returnJsonArray(result as ReturnItems)),
 				);
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({error: error.message});
-				} else {
-					await connection.end();
-					throw error;
+			} else {
+				for (const [index, item] of nonEmptyItems.entries()) {
+					const requestItem = columns.map((column) => item.json[column] ?? null);
+
+					dbRequests.push(
+						connection
+							.execute(query, requestItem)
+							.then(([result]) =>
+								this.helpers.constructExecutionMetaData(
+									this.helpers.returnJsonArray(result as ReturnItems),
+									{ itemData: { item: index } },
+								),
+							),
+					);
 				}
 			}
-		} else if (operation === 'preparedStatement') {
-			try {
-				const query = this.getNodeParameter('query', 0, '', {extractValue: true}) as string;
-				const columnString = this.getNodeParameter('columns', 0) as string;
-				const columns = columnString.split(',').map((column) => column.trim());
-				const bulk = !!options.bulk;
 
-				let nonEmptyItems = items.filter(item => Object.keys(item.json).length > 0);
-
-				let dbRequests;
-
-				if (bulk) {
-					let bulkData = nonEmptyItems
-						.map(item => columns.map(column => {
-							if (column.startsWith('$')) {
-								return column.substring(1);
-							} else if (item.json[column] === undefined) {
-								return null;
-							} else {
-								return item.json[column];
-							}
-						}))
-						.reduce((collection, item) => {
-							collection.push(item);
-
-							return collection;
-						}, []);
-
-					dbRequests = [connection.query(query, [bulkData]).then(([result]) => {
-						return this.helpers.returnJsonArray(result as unknown as IDataObject[]);
-					})];
-				} else {
-					dbRequests = nonEmptyItems.map((item, index) => {
-						const requestItem = columns.map(column => {
-							if (item.json[column] === undefined) {
-								return null;
-							} else {
-								return item.json[column];
-							}
-						});
-
-						return connection.execute(query, requestItem).then(([result]) => {
-							return this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray(result as unknown as IDataObject[]),
-								{itemData: {item: index}},
-							);
-						});
-					});
-				}
-
-				const queryResults = (await Promise.all(dbRequests)) as unknown as IDataObject[][];
-
-				const concatenatedData = queryResults.reduce((collection, elements) => (collection.concat(elements)), []);
-
-				returnItems = this.helpers.returnJsonArray(concatenatedData);
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnItems = this.helpers.returnJsonArray({error: error.message});
-				} else {
-					await connection.end();
-					throw error;
-				}
-			}
-		} else {
+			const queryResults = await Promise.all(dbRequests);
+			returnItems = queryResults.flatMap((item) => item);
+		};
+		const errorHandler = async (error: Error) => {
 			if (this.continueOnFail()) {
-				returnItems = this.helpers.returnJsonArray({
-					error: `The operation "${operation}" is not supported!`,
-				});
+				returnItems = this.helpers.returnJsonArray({ error: error.message });
 			} else {
 				await connection.end();
-				throw new NodeOperationError(
-					this.getNode(),
-					`The operation "${operation}" is not supported!`,
-				);
+				throw error;
 			}
+		};
+
+		try {
+			switch (operation) {
+				case OPERATIONS.executeQuery.value:
+					await executeQuery();
+					break;
+				case OPERATIONS.insert.value:
+					await insert();
+					break;
+				case OPERATIONS.update.value:
+					await update();
+					break;
+				case OPERATIONS.preparedStatement.value:
+					await preparedStatement();
+					break;
+				default:
+					if (this.continueOnFail()) {
+						returnItems = this.helpers.returnJsonArray({
+							error: `The operation "${operation}" is not supported!`,
+						});
+					} else {
+						await connection.end();
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not supported!`,
+						);
+					}
+			}
+		} catch (error) {
+			await errorHandler(error);
 		}
 
 		await connection.end();
