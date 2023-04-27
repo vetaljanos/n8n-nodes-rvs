@@ -105,7 +105,7 @@ export class RvsJwt implements INodeType {
 							'Whether raise exception if error or return object',
 					},
 					{
-						displayName: 'Extend input object',
+						displayName: 'Extend Input Object',
 						name: 'extendInputObject',
 						type: 'boolean',
 						default: true,
