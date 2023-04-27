@@ -8,12 +8,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { IDataObject, NodeOperationError } from 'n8n-workflow';
-
-import {
-	createConnection,
-	copyInputItems,
-	searchTables,
-} from 'n8n-nodes-base/dist/nodes/MySql/GenericFunctions';
+import {createConnection, copyInputItems, searchTables} from './GenericFunctions';
 import type { IExecuteFunctions } from 'n8n-core';
 import { OPERATIONS, FIELD_NAMES, FIELD_TYPES, FIELD_MODE_TYPES, PRIORITY } from './lib/constants';
 import {
