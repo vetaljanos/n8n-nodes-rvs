@@ -5,13 +5,13 @@ import {jsonParse, NodeApiError, NodeOperationError, sleep} from 'n8n-workflow';
 
 import type {OptionsWithUri} from 'request-promise-native';
 
-import type {IAuthDataSanitizeKeys} from 'n8n-nodes-base/dist/nodes/HttpRequest/GenericFunctions';
+import type {IAuthDataSanitizeKeys} from './GenericFunctions';
 import {
 	binaryContentTypes,
 	getOAuth2AdditionalParameters,
 	replaceNullValues,
 	sanitizeUiMessage,
-} from 'n8n-nodes-base/dist/nodes/HttpRequest/GenericFunctions';
+} from './GenericFunctions';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
