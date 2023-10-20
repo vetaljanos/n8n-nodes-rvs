@@ -151,12 +151,12 @@ const versionDescription: INodeTypeDescription = {
 						'Custom email fetching rules. See <a href="https://github.com/mscdex/node-imap">node-imap</a>\'s search function for more details.',
 				},
 				{
-					displayName: 'Output message UID',
+					displayName: 'Output Message UID',
 					name: 'outLastMessageUID',
 					type: 'boolean',
 					default: false,
-					description:
-						'Add to output message UID to be able to use in next searches using ["UID", lastMessageUid]',
+					// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+					description: 'Add to output message UID. To use it in next searches just add ["UID", lastMessageUid].',
 				},
 			],
 		},
