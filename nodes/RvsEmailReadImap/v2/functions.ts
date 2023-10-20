@@ -150,7 +150,16 @@ export async function getNewEmails(this: IExecuteFunctions,
 		};
 	}
 
-	const results = await imapConnection.search(searchCriteria, fetchOptions);
+	let results;
+	try {
+		results = await imapConnection.search(searchCriteria, fetchOptions);
+	} catch (e) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Can't perform search operation for item ${index} and search criteria ${searchCriteria}. Source: ${e}`,
+			{itemIndex: index},
+		);
+	}
 
 	const newEmails: INodeExecutionData[] = [];
 	let newEmail: INodeExecutionData, messageHeader, messageBody;
@@ -284,12 +293,6 @@ export async function getNewEmails(this: IExecuteFunctions,
 		}
 	}
 
-	if (outLastMessageUID) {
-		newEmails.forEach(({json}) => {
-			json.last_uid = '';
-		})
-	}
-
 	return newEmails;
 }
 
@@ -330,5 +333,15 @@ export async function establishConnection(
 
 	// Connect to the IMAP server and open the mailbox
 	// that we get informed whenever a new email arrives
-	return imapConnect(config);
+	try {
+		return await imapConnect(config);
+	} catch (e) {
+		const error = `Connection issue for user ${credentials.user} and server ${credentials.host}. Source: ${e}`;
+
+		throw new NodeOperationError(
+			this.getNode(),
+			error,
+			{itemIndex: index},
+		);
+	}
 }

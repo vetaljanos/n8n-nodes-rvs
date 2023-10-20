@@ -19,7 +19,17 @@ import type {ICredentialsDataImap} from 'n8n-nodes-base/dist/credentials/Imap.cr
 import {isCredentialsDataImap} from 'n8n-nodes-base/dist/credentials/Imap.credentials';
 import {IExecuteFunctions, NodeExecutionWithMetadata} from "n8n-workflow/dist/Interfaces";
 import {establishConnection, getNewEmails} from "./functions";
+import async from 'async';
 
+type AsyncResult = {
+	error: Error|null,
+	data?: INodeExecutionData[]
+}
+
+type IndexedInput = {
+	index: number,
+	input: INodeExecutionData,
+}
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'RVS Imap loader',
@@ -166,6 +176,22 @@ const versionDescription: INodeTypeDescription = {
 					// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 					description: 'Limit for emails. -1 is unlimited.',
 				},
+				{
+					displayName: 'Stop On Error',
+					name: 'stopOnError',
+					type: 'boolean',
+					default: false,
+					// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+					description: 'Stop if error found',
+				},
+				{
+					displayName: 'Concurrent',
+					name: 'concurrent',
+					type: 'number',
+					default: 5,
+					// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+					description: 'Execute multiple mailboxes concurrently. Default is 5.',
+				},
 			],
 		},
 	],
@@ -236,21 +262,26 @@ export class EmailReadImapV2 implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null> {
+		const {stopOnError} =
+			this.getNodeParameter('options', 0, {
+				stopOnError: false,
+			}) as IDataObject;
 
-		const staticData = this.getWorkflowStaticData('node');
-		this.logger.debug('Loaded static data for node "EmailReadImap"', { staticData });
 
 		// Returns all the new unseen messages
 		const inputs = this.getInputData();
+		const indexedInputs: IndexedInput[] = inputs.map((input, index) => ({
+			input, index
+		}));
 
-		const all_results = await Promise.all(inputs.map(async (input, index) => {
+		const all_results: AsyncResult[] = await async.mapLimit(indexedInputs, 5, async ({index}: IndexedInput): Promise<AsyncResult> => {
 			const connection: ImapSimple = await establishConnection.call(this, index);
 
-			let mailbox = this.getNodeParameter('mailbox', 0) as string;
+			let mailbox = this.getNodeParameter('mailbox', index) as string;
 			await connection.openBox(mailbox);
 
 			try {
-				const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+				const options = this.getNodeParameter('options', index, {}) as IDataObject;
 				let searchCriteria = ['UNSEEN'] as Array<string | string[]>;
 
 				if (options.customEmailConfig !== undefined) {
@@ -259,16 +290,35 @@ export class EmailReadImapV2 implements INodeType {
 							string | string[]
 						>;
 					} catch (error) {
-						throw new NodeOperationError(this.getNode(), 'Custom email config is not valid JSON.');
+						return {
+							error: new NodeOperationError(this.getNode(), 'Custom email config is not valid JSON.')
+						};
 					}
 				}
 
-				return await getNewEmails.call(this, connection, searchCriteria, index);
+				return {
+					error: null,
+					data: await getNewEmails.call(this, connection, searchCriteria, index)
+				};
+			} catch (e) {
+				return {
+					error: new NodeOperationError(this.getNode(), 'Custom email config is not valid JSON.')
+				}
 			} finally {
 				connection.end();
 			}
-		}));
+		});
 
-		return [_.flatten(all_results)];
+		if (stopOnError) {
+			const error = all_results.find(ar => !!ar.error);
+
+			if (!!error) {
+				throw error.error;
+			}
+		}
+
+		const dataOnly = all_results.filter(ar => !ar.error).map(ar => ar.data || []);
+
+		return [_.flatten(dataOnly)];
 	}
 }
