@@ -124,11 +124,12 @@ export async function getNewEmails(this: IExecuteFunctions,
 																	 searchCriteria: Array<string | string[]>, index: number): Promise<INodeExecutionData[]> {
 
 	const {outLastMessageUID, messageLimit} =
-		this.getNodeParameter('options', 0, {
+		this.getNodeParameter('options', index, {
 			messageLimit: -1,
 			outLastMessageUID: false,
 		}) as IDataObject;
 
+	const {user} = await extractCredentials(this, index);
 
 	const postProcessAction = this.getNodeParameter('postProcessAction', index) as string;
 
@@ -193,6 +194,7 @@ export async function getNewEmails(this: IExecuteFunctions,
 			if (outLastMessageUID) {
 				parsedEmail.json.uid = message.attributes.uid;
 			}
+			parsedEmail.json.user = user;
 
 			newEmails.push(parsedEmail);
 		}
@@ -254,6 +256,7 @@ export async function getNewEmails(this: IExecuteFunctions,
 					}
 				}
 			}
+			newEmail.json.user = user;
 
 			newEmails.push(newEmail);
 		}
@@ -272,14 +275,14 @@ export async function getNewEmails(this: IExecuteFunctions,
 				json: {
 					raw: part.body as string,
 				},
-				pairedItem: {
-					item: index
-				},
+				pairedItem: this.getInputData(index)[0].pairedItem,
 			};
 
 			if (outLastMessageUID) {
 				newEmail.json.uid = message.attributes.uid;
 			}
+
+			newEmail.json.user = user;
 
 			newEmails.push(newEmail);
 		}
@@ -296,15 +299,21 @@ export async function getNewEmails(this: IExecuteFunctions,
 	return newEmails;
 }
 
+async function extractCredentials(executeFunction: IExecuteFunctions, index: number) {
+	const credentialsObject = await executeFunction.getCredentials('imap', index);
+	const credentials = isCredentialsDataImap(credentialsObject) ? credentialsObject : undefined;
+	if (!credentials) {
+		throw new NodeOperationError(executeFunction.getNode(), 'Credentials are not valid for imap node.');
+	}
+
+	return credentials;
+}
+
 export async function establishConnection(
 	this: IExecuteFunctions,
 	index: number
 ): Promise<ImapSimple> {
-	const credentialsObject = await this.getCredentials('imap', index);
-	const credentials = isCredentialsDataImap(credentialsObject) ? credentialsObject : undefined;
-	if (!credentials) {
-		throw new NodeOperationError(this.getNode(), 'Credentials are not valid for imap node.');
-	}
+	const credentials = await extractCredentials(this, index);
 
 	const config: ImapSimpleOptions = {
 		imap: {
