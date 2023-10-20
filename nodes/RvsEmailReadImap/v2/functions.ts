@@ -123,7 +123,11 @@ export async function getNewEmails(this: IExecuteFunctions,
 																	 imapConnection: ImapSimple,
 																	 searchCriteria: Array<string | string[]>, index: number): Promise<INodeExecutionData[]> {
 
-	const {outLastMessageUID} = this.getNodeParameter('options', 0, {}) as IDataObject;
+	const {outLastMessageUID, messageLimit} =
+		this.getNodeParameter('options', 0, {
+			messageLimit: -1,
+			outLastMessageUID: false,
+		}) as IDataObject;
 
 
 	const postProcessAction = this.getNodeParameter('postProcessAction', index) as string;
@@ -163,6 +167,9 @@ export async function getNewEmails(this: IExecuteFunctions,
 		) as string;
 
 		for (const message of results) {
+			if (messageLimit && messageLimit !== -1 && newEmails.length >= messageLimit) {
+				break;
+			}
 			const part = _.find(message.parts, {which: ''});
 
 			if (part === undefined) {
@@ -191,6 +198,9 @@ export async function getNewEmails(this: IExecuteFunctions,
 		}
 
 		for (const message of results) {
+			if (messageLimit && messageLimit !== -1 && newEmails.length >= messageLimit) {
+				break;
+			}
 			const parts = getParts(message.attributes.struct as IDataObject[]) as IDataObject[];
 
 			newEmail = {
@@ -240,6 +250,9 @@ export async function getNewEmails(this: IExecuteFunctions,
 		}
 	} else if (format === 'raw') {
 		for (const message of results) {
+			if (messageLimit && messageLimit !== -1 && newEmails.length >= messageLimit) {
+				break;
+			}
 			const part = _.find(message.parts, {which: 'TEXT'});
 
 			if (part === undefined) {

@@ -158,6 +158,14 @@ const versionDescription: INodeTypeDescription = {
 					// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 					description: 'Add to output message UID. To use it in next searches just add ["UID", lastMessageUid].',
 				},
+				{
+					displayName: 'Message Limit',
+					name: 'messageLimit',
+					type: 'number',
+					default: -1,
+					// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+					description: 'Limit for emails. -1 is unlimited.',
+				},
 			],
 		},
 	],
