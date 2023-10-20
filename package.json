@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-rvs",
-  "version": "0.4.3",
+  "version": "0.5.3",
   "description": "Extend n8n core nodes",
   "keywords": [
     "n8n-community-node-package"
@@ -34,7 +34,8 @@
       "dist/nodes/RvsMySql/RvsMySql.node.js",
       "dist/nodes/RvsHttpRequest/RvsHttpRequest.node.js",
       "dist/nodes/RvsSpreadsheetFile/RvsSpreadsheetFile.node.js",
-      "dist/nodes/RvsJwt/RvsJwt.node.js"
+      "dist/nodes/RvsJwt/RvsJwt.node.js",
+      "dist/nodes/RvsEmailReadImap/RvsEmailReadImap.node.js"
     ]
   },
   "devDependencies": {
@@ -42,19 +43,22 @@
     "@types/jsonwebtoken": "^9.0.1",
     "@types/request-promise-native": "~1.0.15",
     "@typescript-eslint/parser": "~5.45",
-    "eslint-plugin-n8n-nodes-base": "^1.11.0",
+    "eslint-plugin-n8n-nodes-base": "^1.16.0",
     "gulp": "^4.0.2",
     "n8n-core": "*",
     "n8n-workflow": "*",
     "n8n-nodes-base": "*",
     "prettier": "^2.7.1",
-    "typescript": "~4.8.4",
+    "typescript": "*",
     "@types/lodash.set": "^4"
   },
   "dependencies": {
-    "jsonwebtoken": "~9.0.0",
-    "mysql2": "~2.3.0",
+    "jsonwebtoken": "~9.0.2",
+    "mysql2": "~2.3.3",
     "xlsx": "^0.18.5",
-    "lodash.set": "^4"
+    "lodash": "^4.17.21",
+    "@types/imap-simple": "^4.2.0",
+    "@types/mailparser": "^2.7.3",
+    "@types/rfc2047": "^2.0.1"
   }
 }
